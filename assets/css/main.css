@@ -2,6 +2,8 @@
   --color-bg: #f2f2f2;
   --color-text: #111111;
   --color-border: #111111;
+  --color-a: #1900ff;
+  --color-a-hover: #ae00ff;
 }
 
 *,
@@ -55,8 +57,13 @@ li {
   margin: 0.25rem 0;
 }
 
-a {
-  color: inherit;
+a,
+a:visited {
+  color: var(--color-a);
+}
+
+a:hover {
+  color: var(--color-a-hover);
 }
 
 footer {

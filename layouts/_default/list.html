@@ -1,0 +1,15 @@
+{{ define "main" }}
+  {{ .Content }}
+  {{ if eq .Params.listStyle "simple" }}
+    {{ partial "page-children.html" . }}
+  {{ else }}
+    <ul>
+      {{ range .Pages.ByDate.Reverse }}
+        <li>
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+          {{ with .Date }}(<time datetime="{{ .Format "2006-01-02" }}">{{ .Format "2006-01-02" }}</time>){{ end }}
+        </li>
+      {{ end }}
+    </ul>
+  {{ end }}
+{{ end }}

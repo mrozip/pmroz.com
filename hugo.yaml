@@ -8,6 +8,9 @@ menus:
     - name: 'Index'
       pageRef: '/'
       weight: 1
+    - name: 'About'
+      pageRef: '/about/'
+      weight: 2
 
 markup:
   goldmark:
