@@ -8,7 +8,7 @@ menus:
     - name: 'Index'
       pageRef: '/'
       weight: 1
-    - name: 'About'
+    - name: 'About Me'
       pageRef: '/about/'
       weight: 2
 
