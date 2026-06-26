@@ -2,7 +2,7 @@
 title: 'Index'
 description: 'Pawel Mrozinski Website'
 ---
-Welcome to my website.
+Welcome to my personal website.
 
 I'm a professional hobbyist system administrator with a strong interest in Linux and cloud technologies, currently figuring out DevOps.
 
