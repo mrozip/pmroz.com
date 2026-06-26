@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.Locale }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {{ with .Description }}<meta name="description" content="{{ . }}">{{ end }}
+  <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
+  {{ with resources.Get "css/main.css" }}
+    {{ $css := . | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+  {{ end }}
+</head>
+<body>
+  <nav aria-label="Primary">
+    {{ range $i, $e := .Site.Menus.main }}{{ if $i }} | {{ end }}<a href="{{ .URL }}">{{ .Name }}</a>{{ end }}
+  </nav>
+  <main>
+    <h1>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }}{{ end }}</h1>
+    {{ block "main" . }}{{ end }}
+  </main>
+  <footer>&copy; pmroz {{ now.Year }}</footer>
+</body>
+</html>

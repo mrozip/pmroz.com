@@ -1,0 +1,22 @@
+baseURL: 'https://pmroz.com/'
+locale: 'en-GB'
+title: 'pmroz.com'
+enableRobotsTXT: true
+
+menus:
+  main:
+    - name: 'Index'
+      pageRef: '/'
+      weight: 1
+
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+    renderer:
+      unsafe: true
+
+disableKinds:
+  - taxonomy
+  - term
