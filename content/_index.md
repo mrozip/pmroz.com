@@ -8,6 +8,8 @@ I'm a professional hobbyist system administrator with a strong interest in Linux
 
 This website is built with [Hugo](https://gohugo.io/), hosted on Azure and built using GitHub Actions.
 
+[Website Repo](https://github.com/mrozip/pmroz.com)
+
 ## Contact
 - [Email](mailto:pawel@mrozinski.uk)
-- [GitHub](https://github.com/pavl6)
+- [GitHub](https://github.com/mrozip)
