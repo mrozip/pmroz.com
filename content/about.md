@@ -2,7 +2,7 @@
 title: 'About'
 description: 'Professional profile, technical skills, and current areas of focus'
 ---
-## Technical Experience
+## Current Technical Experience
 
 My current work focuses on Microsoft 365 administration (Entra ID, SharePoint, Exchange Online, Teams, Power Platform, endpoint and identity controls), and supporting enterprise IT environments at scale.
 
