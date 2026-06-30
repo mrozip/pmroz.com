@@ -30,7 +30,7 @@ To test a new Azure resource group and Static Web App from GitHub without touchi
 | `resource_group_name` | `rg-pmroz-com-sandbox` |
 | `static_web_app_name` | `swa-pmroz-com-sandbox` |
 | `state_key` | `sandbox.tfstate` |
-| `location` | `uksouth` |
+| `location` | `eastus2` |
 | `sku` | `Free` |
 
 Use the same `state_key`, `resource_group_name`, and `static_web_app_name` with `operation=destroy` to remove the sandbox resources.
@@ -52,12 +52,12 @@ Optional variables:
 | --- | --- |
 | `AZURE_RESOURCE_GROUP_NAME` | `rg-pmroz-com` |
 | `AZURE_STATIC_WEB_APP_NAME` | `swa-pmroz-com` |
-| `AZURE_LOCATION` | `uksouth` |
+| `AZURE_LOCATION` | `eastus2` |
 | `AZURE_STATIC_WEB_APP_SKU` | `Free` |
 | `TF_STATE_RESOURCE_GROUP_NAME` | `rg-pmroz-com-tfstate` |
 | `TF_STATE_CONTAINER_NAME` | `tfstate` |
 | `TF_STATE_KEY` | `pmroz.com.tfstate` |
-| `TF_STATE_LOCATION` | `uksouth` |
+| `TF_STATE_LOCATION` | `eastus2` |
 
 ## Azure Setup
 
@@ -87,7 +87,7 @@ The default configuration creates:
 | --- | --- |
 | Resource group | `rg-pmroz-com` |
 | Static Web App | `swa-pmroz-com` |
-| Location | `uksouth` |
+| Location | `eastus2` |
 | SKU | `Free` |
 
 Override these values with the optional GitHub variables above.
