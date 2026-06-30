@@ -97,7 +97,6 @@ jobs:
           : "${TF_STATE_STORAGE_ACCOUNT_NAME:?Set TF_STATE_STORAGE_ACCOUNT_NAME as a GitHub variable.}"
 
       - name: Azure login
-        if: github.event_name == 'workflow_dispatch' && inputs.bootstrap_state == true
         uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -162,6 +161,16 @@ jobs:
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
+
+      - name: Verify Terraform state backend
+        run: |
+          if ! az storage account show \
+            --name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
+            --resource-group "$TF_STATE_RESOURCE_GROUP_NAME" \
+            --output none 2>/dev/null; then
+            echo "::error::Terraform state storage account '${TF_STATE_STORAGE_ACCOUNT_NAME}' does not exist in resource group '${TF_STATE_RESOURCE_GROUP_NAME}'. Re-run this workflow with bootstrap_state=true to create it."
+            exit 1
+          fi
 
       - name: Terraform init
         run: |
