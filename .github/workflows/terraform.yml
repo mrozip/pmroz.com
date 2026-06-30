@@ -107,9 +107,22 @@ jobs:
       - name: Bootstrap Terraform state backend
         if: github.event_name == 'workflow_dispatch' && inputs.bootstrap_state == true
         run: |
+          set -euo pipefail
+
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+          az account show \
+            --query "{subscriptionId:id, tenantId:tenantId, user:user.name}" \
+            --output json
+
+          az provider register \
+            --namespace Microsoft.Storage \
+            --wait \
+            --subscription "$ARM_SUBSCRIPTION_ID"
+
           az group create \
             --name "$TF_STATE_RESOURCE_GROUP_NAME" \
-            --location "$TF_STATE_LOCATION"
+            --location "$TF_STATE_LOCATION" \
+            --subscription "$ARM_SUBSCRIPTION_ID"
 
           az storage account create \
             --name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
@@ -118,11 +131,13 @@ jobs:
             --sku Standard_LRS \
             --kind StorageV2 \
             --allow-blob-public-access false \
-            --min-tls-version TLS1_2
+            --min-tls-version TLS1_2 \
+            --subscription "$ARM_SUBSCRIPTION_ID"
 
           account_id="$(az storage account show \
             --name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
             --resource-group "$TF_STATE_RESOURCE_GROUP_NAME" \
+            --subscription "$ARM_SUBSCRIPTION_ID" \
             --query id \
             --output tsv)"
           principal_id="$(az ad sp show --id "$ARM_CLIENT_ID" --query id --output tsv)"
@@ -130,6 +145,7 @@ jobs:
             --assignee "$principal_id" \
             --role "Storage Blob Data Contributor" \
             --scope "$account_id" \
+            --subscription "$ARM_SUBSCRIPTION_ID" \
             --query "length(@)" \
             --output tsv)"
 
@@ -137,7 +153,8 @@ jobs:
             az role assignment create \
               --assignee "$principal_id" \
               --role "Storage Blob Data Contributor" \
-              --scope "$account_id"
+              --scope "$account_id" \
+              --subscription "$ARM_SUBSCRIPTION_ID"
           fi
 
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
@@ -156,7 +173,7 @@ jobs:
           exit 1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.15.7
 
@@ -168,7 +185,8 @@ jobs:
           terraform init \
             -backend-config="storage_account_name=${TF_STATE_STORAGE_ACCOUNT_NAME}" \
             -backend-config="container_name=${TF_STATE_CONTAINER_NAME}" \
-            -backend-config="key=${TF_STATE_KEY}"
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="resource_group_name=${TF_STATE_RESOURCE_GROUP_NAME}"
 
       - name: Terraform validate
         run: terraform validate
