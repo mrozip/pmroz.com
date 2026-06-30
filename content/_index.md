@@ -6,7 +6,7 @@ Welcome to my website.
 
 I'm a professional hobbyist system administrator with a strong interest in Linux and cloud technologies, currently figuring out DevOps.
 
-This website is built with [Hugo](https://gohugo.io/), hosted on Azure and built using GitHub Actions.
+This website is built with [Hugo](https://gohugo.io/), deployed to Azure Static Web Apps via GitHub Actions, with infrastructure managed through Terraform.
 
 [Website Repo](https://github.com/mrozip/pmroz.com)
 
