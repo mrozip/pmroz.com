@@ -70,7 +70,7 @@ env:
   TF_VAR_location: ${{ inputs.location || vars.AZURE_LOCATION || 'eastus2' }}
   TF_VAR_sku: ${{ inputs.sku || vars.AZURE_STATIC_WEB_APP_SKU || 'Free' }}
 
-  TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-pmroz-com-tfstate' }}
+  TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-tfstate' }}
   TF_STATE_STORAGE_ACCOUNT_NAME: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
   TF_STATE_CONTAINER_NAME: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
   TF_STATE_KEY: ${{ inputs.state_key || vars.TF_STATE_KEY || 'pmroz.com.tfstate' }}

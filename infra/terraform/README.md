@@ -54,7 +54,7 @@ Optional variables:
 | `AZURE_STATIC_WEB_APP_NAME` | `swa-pmroz-com` |
 | `AZURE_LOCATION` | `eastus2` |
 | `AZURE_STATIC_WEB_APP_SKU` | `Free` |
-| `TF_STATE_RESOURCE_GROUP_NAME` | `rg-pmroz-com-tfstate` |
+| `TF_STATE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-tfstate` |
 | `TF_STATE_CONTAINER_NAME` | `tfstate` |
 | `TF_STATE_KEY` | `pmroz.com.tfstate` |
 | `TF_STATE_LOCATION` | `eastus2` |
