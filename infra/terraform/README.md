@@ -27,9 +27,9 @@ To test a new Azure resource group and Static Web App from GitHub without touchi
 | --- | --- |
 | `operation` | `apply` |
 | `bootstrap_state` | `true` on the first run only |
-| `resource_group_name` | `rg-pmroz-com-sandbox` |
-| `static_web_app_name` | `swa-pmroz-com-sandbox` |
-| `state_key` | `sandbox.tfstate` |
+| `resource_group_name` | `rg-hugo-pmroz-app-sbx` |
+| `static_web_app_name` | `swa-hugo-pmroz-app-sbx` |
+| `state_key` | `hugo-pmroz/sbx/app.tfstate` |
 | `location` | `eastus2` |
 | `sku` | `Free` |
 
@@ -50,13 +50,13 @@ Optional variables:
 
 | Variable | Default |
 | --- | --- |
-| `AZURE_RESOURCE_GROUP_NAME` | `rg-pmroz-com` |
-| `AZURE_STATIC_WEB_APP_NAME` | `swa-pmroz-com` |
+| `AZURE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-app-prod` |
+| `AZURE_STATIC_WEB_APP_NAME` | `swa-hugo-pmroz-app-prod` |
 | `AZURE_LOCATION` | `eastus2` |
 | `AZURE_STATIC_WEB_APP_SKU` | `Free` |
-| `TF_STATE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-tfstate` |
+| `TF_STATE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-state-shared` |
 | `TF_STATE_CONTAINER_NAME` | `tfstate` |
-| `TF_STATE_KEY` | `pmroz.com.tfstate` |
+| `TF_STATE_KEY` | `hugo-pmroz/prod/app.tfstate` |
 | `TF_STATE_LOCATION` | `eastus2` |
 
 ## Azure Setup
@@ -85,8 +85,8 @@ The default configuration creates:
 
 | Setting | Default |
 | --- | --- |
-| Resource group | `rg-pmroz-com` |
-| Static Web App | `swa-pmroz-com` |
+| Resource group | `rg-hugo-pmroz-app-prod` |
+| Static Web App | `swa-hugo-pmroz-app-prod` |
 | Location | `eastus2` |
 | SKU | `Free` |
 

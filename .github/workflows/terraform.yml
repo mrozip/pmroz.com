@@ -20,17 +20,17 @@ on:
       resource_group_name:
         description: Azure resource group name for a manual run.
         required: true
-        default: rg-pmroz-com-sandbox
+        default: rg-hugo-pmroz-app-sbx
         type: string
       static_web_app_name:
         description: Azure Static Web App name for a manual run.
         required: true
-        default: swa-pmroz-com-sandbox
+        default: swa-hugo-pmroz-app-sbx
         type: string
       state_key:
         description: Terraform state key for a manual run. Use a separate key for sandbox resources.
         required: true
-        default: sandbox.tfstate
+        default: hugo-pmroz/sbx/app.tfstate
         type: string
       location:
         description: Azure region for a manual run.
@@ -65,15 +65,15 @@ env:
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-  TF_VAR_resource_group_name: ${{ inputs.resource_group_name || vars.AZURE_RESOURCE_GROUP_NAME || 'rg-pmroz-com' }}
-  TF_VAR_static_web_app_name: ${{ inputs.static_web_app_name || vars.AZURE_STATIC_WEB_APP_NAME || 'swa-pmroz-com' }}
+  TF_VAR_resource_group_name: ${{ inputs.resource_group_name || vars.AZURE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-app-prod' }}
+  TF_VAR_static_web_app_name: ${{ inputs.static_web_app_name || vars.AZURE_STATIC_WEB_APP_NAME || 'swa-hugo-pmroz-app-prod' }}
   TF_VAR_location: ${{ inputs.location || vars.AZURE_LOCATION || 'eastus2' }}
   TF_VAR_sku: ${{ inputs.sku || vars.AZURE_STATIC_WEB_APP_SKU || 'Free' }}
 
-  TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-tfstate' }}
+  TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-state-shared' }}
   TF_STATE_STORAGE_ACCOUNT_NAME: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
   TF_STATE_CONTAINER_NAME: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
-  TF_STATE_KEY: ${{ inputs.state_key || vars.TF_STATE_KEY || 'pmroz.com.tfstate' }}
+  TF_STATE_KEY: ${{ inputs.state_key || vars.TF_STATE_KEY || 'hugo-pmroz/prod/app.tfstate' }}
   TF_STATE_LOCATION: ${{ vars.TF_STATE_LOCATION || 'eastus2' }}
 
 jobs:

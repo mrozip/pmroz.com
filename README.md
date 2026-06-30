@@ -100,9 +100,9 @@ To test a new resource group and Static Web App without touching the production 
 | --- | --- |
 | `operation` | `apply` |
 | `bootstrap_state` | `true` on the first run only |
-| `resource_group_name` | `rg-pmroz-com-sandbox` |
-| `static_web_app_name` | `swa-pmroz-com-sandbox` |
-| `state_key` | `sandbox.tfstate` |
+| `resource_group_name` | `rg-hugo-pmroz-app-sbx` |
+| `static_web_app_name` | `swa-hugo-pmroz-app-sbx` |
+| `state_key` | `hugo-pmroz/sbx/app.tfstate` |
 
 Use the same `state_key` and names with `operation=destroy` to remove the sandbox resources.
 

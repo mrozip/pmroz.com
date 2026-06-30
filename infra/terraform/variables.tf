@@ -1,13 +1,13 @@
 variable "resource_group_name" {
   description = "Name of the resource group that will contain the site resources."
   type        = string
-  default     = "rg-pmroz-com"
+  default     = "rg-hugo-pmroz-app-prod"
 }
 
 variable "static_web_app_name" {
   description = "Name of the Azure Static Web App resource."
   type        = string
-  default     = "swa-pmroz-com"
+  default     = "swa-hugo-pmroz-app-prod"
 
   validation {
     condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9]$", var.static_web_app_name))
