@@ -65,15 +65,15 @@ env:
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-  TF_VAR_resource_group_name: ${{ inputs.resource_group_name || vars.AZURE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-app-prod' }}
-  TF_VAR_static_web_app_name: ${{ inputs.static_web_app_name || vars.AZURE_STATIC_WEB_APP_NAME || 'swa-hugo-pmroz-app-prod' }}
-  TF_VAR_location: ${{ inputs.location || vars.AZURE_LOCATION || 'eastus2' }}
-  TF_VAR_sku: ${{ inputs.sku || vars.AZURE_STATIC_WEB_APP_SKU || 'Free' }}
+  TF_VAR_resource_group_name: ${{ inputs.resource_group_name }}
+  TF_VAR_static_web_app_name: ${{ inputs.static_web_app_name }}
+  TF_VAR_location: ${{ inputs.location }}
+  TF_VAR_sku: ${{ inputs.sku }}
 
   TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-state-shared' }}
   TF_STATE_STORAGE_ACCOUNT_NAME: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
   TF_STATE_CONTAINER_NAME: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
-  TF_STATE_KEY: ${{ inputs.state_key || vars.TF_STATE_KEY || 'hugo-pmroz/prod/app.tfstate' }}
+  TF_STATE_KEY: ${{ inputs.state_key }}
   TF_STATE_LOCATION: ${{ vars.TF_STATE_LOCATION || 'eastus2' }}
 
 jobs:
@@ -97,15 +97,15 @@ jobs:
           : "${TF_STATE_STORAGE_ACCOUNT_NAME:?Set TF_STATE_STORAGE_ACCOUNT_NAME as a GitHub variable.}"
 
       - name: Azure login
-        if: github.event_name == 'workflow_dispatch' && inputs.bootstrap_state == true
+        if: inputs.bootstrap_state == true
         uses: azure/login@v3
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Bootstrap Terraform state backend
-        if: github.event_name == 'workflow_dispatch' && inputs.bootstrap_state == true
+        if: inputs.bootstrap_state == true
         run: |
           set -euo pipefail
 
@@ -193,7 +193,7 @@ jobs:
 
       - name: Terraform plan
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.operation }}" = "destroy" ]; then
+          if [ "${{ inputs.operation }}" = "destroy" ]; then
             terraform plan -destroy -no-color -out=tfplan
           else
             terraform plan -no-color -out=tfplan
@@ -209,5 +209,5 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Terraform apply
-        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || inputs.operation == 'destroy')
+        if: inputs.operation == 'apply' || inputs.operation == 'destroy'
         run: terraform apply -auto-approve tfplan

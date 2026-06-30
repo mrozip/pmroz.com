@@ -50,14 +50,11 @@ Optional variables:
 
 | Variable | Default |
 | --- | --- |
-| `AZURE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-app-prod` |
-| `AZURE_STATIC_WEB_APP_NAME` | `swa-hugo-pmroz-app-prod` |
-| `AZURE_LOCATION` | `eastus2` |
-| `AZURE_STATIC_WEB_APP_SKU` | `Free` |
 | `TF_STATE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-state-shared` |
 | `TF_STATE_CONTAINER_NAME` | `tfstate` |
-| `TF_STATE_KEY` | `hugo-pmroz/prod/app.tfstate` |
 | `TF_STATE_LOCATION` | `eastus2` |
+
+Resource names, location, SKU, and state key are provided by required workflow inputs with sandbox-safe defaults.
 
 ## Azure Setup
 
