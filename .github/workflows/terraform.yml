@@ -165,11 +165,11 @@ jobs:
               exit 0
             fi
 
-            echo "Waiting for storage data-plane permissions to propagate. Attempt $attempt of 12."
+            echo "Attempt $attempt of 12."
             sleep 10
           done
 
-          echo "Failed to create Terraform state container after waiting for role assignment propagation."
+          echo "Failed to create Terraform container."
           exit 1
 
       - name: Setup Terraform
