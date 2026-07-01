@@ -1,9 +1,11 @@
 :root {
-  --color-bg: #f2f2f2;
-  --color-text: #111111;
-  --color-border: #111111;
-  --color-a: #1900ff;
-  --color-a-hover: #ae00ff;
+  --color-bg: #eceff3;
+  --color-panel: #f9fbfd;
+  --color-text: #1a2433;
+  --color-muted: #4a586d;
+  --color-border: #8fa0b8;
+  --color-a: #1946b8;
+  --color-a-hover: #6d0f75;
 }
 
 *,
@@ -14,26 +16,33 @@
 
 body {
   margin: 0 auto;
-  max-width: 920px;
-  padding: 0 16px;
+  max-width: 980px;
+  padding: 0 20px;
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: "Source Serif 4", "Plex Sans", "Segoe UI", sans-serif;
-  line-height: 1.45;
+  font-family: "Trebuchet MS", "Verdana", "Tahoma", "Segoe UI", sans-serif;
+  line-height: 1.55;
 }
 
 nav {
-  text-align: center;
-  padding: 16px 0;
+  text-align: left;
+  padding: 18px 0 14px;
   border-bottom: 1px solid var(--color-border);
+  font-size: 0.96rem;
 }
 
 main {
-  padding: 8px 0;
+  margin: 18px 0 0;
+  padding: 20px 22px;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
 }
 
 h1 {
-  margin: 16px 0 8px;
+  margin: 0 0 14px;
+  font-size: clamp(1.75rem, 2.8vw, 2.25rem);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
 h2,
@@ -41,25 +50,47 @@ h3,
 h4,
 h5,
 h6 {
-  margin: 18px 0 10px;
+  margin: 20px 0 10px;
+  line-height: 1.25;
+}
+
+h2 {
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h3 {
+  font-size: 1rem;
+  color: var(--color-muted);
 }
 
 p {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
+  max-width: 72ch;
 }
 
 ul,
 ol {
-  padding-left: 20px;
+  padding-left: 22px;
+  margin: 0 0 10px;
+}
+
+ul {
+  list-style-type: square;
 }
 
 li {
-  margin: 0.25rem 0;
+  margin: 0.35rem 0;
 }
 
 a,
 a:visited {
   color: var(--color-a);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 a:hover {
@@ -68,17 +99,31 @@ a:hover {
 
 footer {
   margin-top: 16px;
-  padding: 16px 0;
+  padding: 14px 0 22px;
   border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.9rem;
 }
 
 @media (max-width: 640px) {
   body {
-    padding: 0 14px;
+    padding: 0 12px;
   }
 
-  nav,
+  nav {
+    padding: 14px 0 12px;
+  }
+
+  main {
+    margin-top: 14px;
+    padding: 14px;
+  }
+
+  h2 {
+    padding-top: 10px;
+  }
+
   footer {
-    padding: 14px 0;
+    padding: 12px 0 18px;
   }
 }

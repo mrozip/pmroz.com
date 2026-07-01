@@ -1,6 +1,6 @@
 baseURL: 'https://pmroz.com/'
 locale: 'en-GB'
-title: 'pmroz.com'
+title: "Pawe\u0142 Mrozi\u0144ski"
 enableRobotsTXT: true
 
 menus:
