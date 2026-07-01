@@ -33,15 +33,17 @@ nav {
 
 main {
   margin: 18px 0 0;
-  padding: 20px 22px;
+  padding: 24px;
   background-color: var(--color-panel);
   border: 1px solid var(--color-border);
 }
 
 h1 {
-  margin: 0 0 14px;
-  font-size: clamp(1.75rem, 2.8vw, 2.25rem);
-  line-height: 1.2;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+  margin: 0 0 20px;
+  font-size: 30px;
+  line-height: 1.1;
   letter-spacing: 0.02em;
 }
 
@@ -50,26 +52,17 @@ h3,
 h4,
 h5,
 h6 {
-  margin: 20px 0 10px;
+  margin: 16px 0 10px;
   line-height: 1.25;
 }
 
-h2 {
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
-  font-size: 1.15rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
 h3 {
-  font-size: 1rem;
+  font-size: 16px;
   color: var(--color-muted);
 }
 
 p {
   margin: 0 0 12px;
-  max-width: 72ch;
 }
 
 ul,
