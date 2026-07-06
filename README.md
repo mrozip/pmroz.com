@@ -13,6 +13,7 @@ Live at: [https://pmroz.com](https://pmroz.com)
   workflows/
     azure-static-web-apps.yml   # CI/CD pipeline
     terraform.yml               # Azure infrastructure pipeline
+    terraform-validate.yml      # PR validation for Terraform changes
 archetypes/
   default.md                    # Hugo content archetype
 assets/
@@ -86,13 +87,20 @@ Resource group
 └── Static Web App
 ```
 
-Terraform is intended to run from GitHub Actions only:
+Terraform apply and destroy operations are intended to run from GitHub Actions only:
 
 - Manual workflow runs can plan, apply, destroy, and bootstrap the remote Terraform state backend.
+- Pull requests validate Terraform changes without connecting to the remote state backend.
 
 The Terraform state storage account is a separate GitHub Actions backend dependency.
 
-Terraform does not run automatically for pull requests or pushes to `main`. The normal PR and merge path is reserved for updating the existing Azure Static Web App through `.github/workflows/azure-static-web-apps.yml`.
+Terraform plan, apply, and destroy do not run automatically for pull requests or pushes to `main`. The normal PR and merge path is reserved for updating the existing Azure Static Web App through `.github/workflows/azure-static-web-apps.yml`.
+
+Pull requests that change `infra/terraform/**` or `.github/workflows/terraform-validate.yml` run `.github/workflows/terraform-validate.yml`, which checks:
+
+- `terraform fmt -check -recursive`
+- `terraform init -backend=false`
+- `terraform validate`
 
 To test a new resource group and Static Web App without touching the production state, run the `Terraform` workflow manually with:
 
@@ -123,15 +131,16 @@ Keep `AZURE_STATIC_WEB_APPS_API_TOKEN` pointed at the existing production Static
 
 The site is deployed via `.github/workflows/azure-static-web-apps.yml`.
 
-| Setting               | Reason                                             |
-| --------------------- | -------------------------------------------------- |
-| submodules: recursive | Required if the Hugo theme is a Git submodule      |
-| extended: true        | Required for themes using Hugo Extended features   |
-| hugo --minify         | Builds the production site with minified output    |
-| app_location: public  | Deploys Hugo output only                           |
-| skip_app_build: true  | Prevents Azure from trying to build the site again |
+| Setting | Reason |
+| --- | --- |
+| submodules: recursive | Required if the Hugo theme is a Git submodule |
+| extended: true | Required for themes using Hugo Extended features |
+| `hugo --minify --gc --panicOnWarning` | Builds the production site, prunes generated resources, and fails on Hugo warnings |
+| lychee offline link check | Validates generated local links and anchors before deploy |
+| app_location: public | Deploys Hugo output only |
+| skip_app_build: true | Prevents Azure from trying to build the site again |
 
-Pull requests targeting `main` create an Azure Static Web Apps preview environment for site changes. Pushes to `main` build and deploy those site changes to the existing Azure Static Web App.
+Pull requests targeting `main` create an Azure Static Web Apps preview environment for site changes after the Hugo build and generated-site link checks pass. Pushes to `main` run the same checks and then deploy those site changes to the existing Azure Static Web App.
 
 ---
 
@@ -173,7 +182,15 @@ hugo server
 Build a production output with:
 
 ```bash
-hugo --minify
+hugo --minify --gc --panicOnWarning
 ```
 
 Output is written to `public/`.
+
+Run the same Terraform validation used for pull requests with:
+
+```bash
+terraform fmt -check -recursive infra/terraform
+terraform -chdir=infra/terraform init -backend=false
+terraform -chdir=infra/terraform validate
+```

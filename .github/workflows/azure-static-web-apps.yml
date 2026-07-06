@@ -41,7 +41,13 @@ jobs:
           extended: true
 
       - name: Build Hugo site
-        run: hugo --minify
+        run: hugo --minify --gc --panicOnWarning
+
+      - name: Check generated site links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress --include-fragments --root-dir "${{ github.workspace }}/public" "public/**/*.html"
+          fail: true
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
