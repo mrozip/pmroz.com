@@ -1,4 +1,4 @@
-name: Terraform Validate
+name: Terraform PR
 
 on:
   pull_request:
@@ -7,33 +7,92 @@ on:
       - main
     paths:
       - infra/terraform/**
+      - .github/actions/terraform-root/**
+      - .github/workflows/terraform.yml
       - .github/workflows/terraform-validate.yml
 
 permissions:
   contents: read
 
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_APP_WORKING_DIR: infra/terraform
+  TF_BOOTSTRAP_WORKING_DIR: infra/terraform/bootstrap
+
 jobs:
   validate:
     name: Terraform Validate
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infra/terraform
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Validate app root
+        uses: ./.github/actions/terraform-root
         with:
-          terraform_version: 1.15.7
+          working_directory: ${{ env.TF_APP_WORKING_DIR }}
+          backend_mode: "false"
+          plan_mode: none
 
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
+      - name: Validate bootstrap root
+        uses: ./.github/actions/terraform-root
+        with:
+          working_directory: ${{ env.TF_BOOTSTRAP_WORKING_DIR }}
+          backend_mode: "false"
+          plan_mode: none
 
-      - name: Terraform init
-        run: terraform init -backend=false
+  plan:
+    name: Terraform Plan
+    needs: validate
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: terraform
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARM_USE_AZUREAD: "true"
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform validate
-        run: terraform validate
+      TF_VAR_resource_group_name: ${{ vars.TF_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-app-prod' }}
+      TF_VAR_static_web_app_name: ${{ vars.TF_STATIC_WEB_APP_NAME || 'swa-hugo-pmroz-app-prod' }}
+      TF_VAR_location: ${{ vars.TF_LOCATION || 'eastus2' }}
+      TF_VAR_sku: ${{ vars.TF_SKU || 'Free' }}
+
+      TF_STATE_RESOURCE_GROUP_NAME: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-state-shared' }}
+      TF_STATE_STORAGE_ACCOUNT_NAME: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
+      TF_STATE_CONTAINER_NAME: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'hugo-pmroz/prod/app.tfstate' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check required GitHub variables
+        run: |
+          : "${ARM_CLIENT_ID:?Set AZURE_CLIENT_ID as a GitHub variable.}"
+          : "${ARM_TENANT_ID:?Set AZURE_TENANT_ID as a GitHub variable.}"
+          : "${ARM_SUBSCRIPTION_ID:?Set AZURE_SUBSCRIPTION_ID as a GitHub variable.}"
+          : "${TF_STATE_STORAGE_ACCOUNT_NAME:?Set TF_STATE_STORAGE_ACCOUNT_NAME as a GitHub variable.}"
+
+      - name: Terraform plan
+        uses: ./.github/actions/terraform-root
+        with:
+          working_directory: ${{ env.TF_APP_WORKING_DIR }}
+          backend_mode: "true"
+          backend_config: |
+            storage_account_name=${{ env.TF_STATE_STORAGE_ACCOUNT_NAME }}
+            container_name=${{ env.TF_STATE_CONTAINER_NAME }}
+            key=${{ env.TF_STATE_KEY }}
+            resource_group_name=${{ env.TF_STATE_RESOURCE_GROUP_NAME }}
+            use_azuread_auth=true
+          plan_mode: plan

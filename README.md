@@ -8,12 +8,14 @@ Live at: [https://pmroz.com](https://pmroz.com)
 
 ## Project Structure
 
-```
+```tree
 .github/
+  actions/
+    terraform-root/                # Shared Terraform workflow action
   workflows/
     azure-static-web-apps.yml   # CI/CD pipeline
     terraform.yml               # Azure infrastructure pipeline
-    terraform-validate.yml      # PR validation for Terraform changes
+    terraform-validate.yml      # PR validation and plan for Terraform changes
 archetypes/
   default.md                    # Hugo content archetype
 assets/
@@ -24,6 +26,7 @@ content/
   about.md                      # About me page
 infra/
   terraform/                    # Azure resource group and Static Web App IaC
+    bootstrap/                  # Terraform-managed remote state backend
 layouts/
   404.html                      # Custom 404 page
   index.html                    # Homepage template
@@ -69,7 +72,7 @@ For this project's scope, do not add the following unless there is a clear reaso
 
 The expected Azure resource group should contain only:
 
-```
+```tree
 Resource group
 └── Static Web App
 ```
@@ -82,32 +85,35 @@ A budget alert should be configured separately in Azure Cost Management.
 
 Terraform configuration lives in `infra/terraform` and provisions:
 
-```
+```tree
 Resource group
 └── Static Web App
 ```
 
 Terraform apply and destroy operations are intended to run from GitHub Actions only:
 
-- Manual workflow runs can plan, apply, destroy, and bootstrap the remote Terraform state backend.
-- Pull requests validate Terraform changes without connecting to the remote state backend.
+* Manual workflow runs can plan, apply, destroy, and apply the Terraform-managed remote state backend.
+* Pull requests validate Terraform changes without cloud access and run a remote-state plan for same-repository PR branches.
 
-The Terraform state storage account is a separate GitHub Actions backend dependency.
+The Terraform state storage account is managed by `infra/terraform/bootstrap`. It is separate from the website hosting resource group.
 
-Terraform plan, apply, and destroy do not run automatically for pull requests or pushes to `main`. The normal PR and merge path is reserved for updating the existing Azure Static Web App through `.github/workflows/azure-static-web-apps.yml`.
+Terraform apply and destroy do not run automatically for pull requests or pushes to `main`. The normal PR and merge path is reserved for updating the existing Azure Static Web App through `.github/workflows/azure-static-web-apps.yml`.
 
-Pull requests that change `infra/terraform/**` or `.github/workflows/terraform-validate.yml` run `.github/workflows/terraform-validate.yml`, which checks:
+Pull requests that change Terraform files or Terraform workflows run `.github/workflows/terraform-validate.yml`, which checks:
 
-- `terraform fmt -check -recursive`
-- `terraform init -backend=false`
-- `terraform validate`
+* `terraform fmt -check -recursive`
+* `terraform init -backend=false`
+* `terraform validate`
+* `terraform plan` against the configured remote state for same-repository PR branches
 
-To test a new resource group and Static Web App without touching the production state, run the `Terraform` workflow manually with:
+The PR plan job intentionally skips forked pull requests so untrusted Terraform code cannot receive Azure OIDC credentials.
+
+To test a new resource group and Static Web App without touching production state, run the `Terraform` workflow manually with:
 
 | Input | Example |
 | --- | --- |
 | `operation` | `apply` |
-| `bootstrap_state` | `true` on the first run only |
+| `bootstrap_state` | `true` to apply `infra/terraform/bootstrap` first |
 | `resource_group_name` | `rg-hugo-pmroz-app-sbx` |
 | `static_web_app_name` | `swa-hugo-pmroz-app-sbx` |
 | `state_key` | `hugo-pmroz/sbx/app.tfstate` |
@@ -122,6 +128,21 @@ Required GitHub variables:
 | `AZURE_TENANT_ID` | Azure tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 | `TF_STATE_STORAGE_ACCOUNT_NAME` | Azure Storage account for Terraform state |
+
+Optional GitHub variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `TF_STATE_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-state-shared` | Resource group for the Terraform state backend |
+| `TF_STATE_CONTAINER_NAME` | `tfstate` | Blob container for Terraform state |
+| `TF_STATE_LOCATION` | `eastus2` | Azure region for the state backend |
+| `TF_BOOTSTRAP_STATE_KEY` | `hugo-pmroz/bootstrap.tfstate` | Remote state key for the bootstrap root |
+| `TF_STATE_KEY` | `hugo-pmroz/prod/app.tfstate` | Remote state key used by PR plans |
+| `TF_RESOURCE_GROUP_NAME` | `rg-hugo-pmroz-app-prod` | Resource group used by PR plans |
+| `TF_STATIC_WEB_APP_NAME` | `swa-hugo-pmroz-app-prod` | Static Web App used by PR plans |
+| `TF_LOCATION` | `eastus2` | Azure region used by PR plans |
+| `TF_SKU` | `Free` | Static Web Apps SKU used by PR plans |
+| `TF_BOOTSTRAP_ASSIGN_CURRENT_PRINCIPAL_BLOB_DATA_CONTRIBUTOR` | `true` | Whether bootstrap manages the GitHub Actions principal's state storage blob role assignment |
 
 Keep `AZURE_STATIC_WEB_APPS_API_TOKEN` pointed at the existing production Static Web App. Do not replace it with a sandbox deployment token unless you intentionally want the deployment workflow to target that sandbox app.
 
@@ -148,8 +169,8 @@ Pull requests targeting `main` create an Azure Static Web Apps preview environme
 
 `staticwebapp.config.json` controls Azure Static Web Apps behaviour:
 
-- Routes 404 errors to the Hugo-generated `404.html` page
-- Sets `X-Content-Type-Options` and `Referrer-Policy` security headers globally
+* Routes 404 errors to the Hugo-generated `404.html` page
+* Sets `X-Content-Type-Options` and `Referrer-Policy` security headers globally
 
 ---
 
@@ -191,6 +212,8 @@ Run the same Terraform validation used for pull requests with:
 
 ```bash
 terraform fmt -check -recursive infra/terraform
-terraform -chdir=infra/terraform init -backend=false
+terraform -chdir=infra/terraform init -backend=false -reconfigure
 terraform -chdir=infra/terraform validate
+terraform -chdir=infra/terraform/bootstrap init -backend=false -reconfigure
+terraform -chdir=infra/terraform/bootstrap validate
 ```

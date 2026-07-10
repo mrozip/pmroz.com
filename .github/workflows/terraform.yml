@@ -13,7 +13,7 @@ on:
           - apply
           - destroy
       bootstrap_state:
-        description: Create or update the Terraform state storage account before running Terraform.
+        description: Apply the Terraform state backend root before running the app root.
         required: false
         default: false
         type: boolean
@@ -57,7 +57,8 @@ concurrency:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  TF_WORKING_DIR: infra/terraform
+  TF_APP_WORKING_DIR: infra/terraform
+  TF_BOOTSTRAP_WORKING_DIR: infra/terraform/bootstrap
 
   ARM_USE_AZUREAD: "true"
   ARM_USE_OIDC: "true"
@@ -74,16 +75,21 @@ env:
   TF_STATE_STORAGE_ACCOUNT_NAME: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
   TF_STATE_CONTAINER_NAME: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
   TF_STATE_KEY: ${{ inputs.state_key }}
+  TF_BOOTSTRAP_STATE_KEY: ${{ vars.TF_BOOTSTRAP_STATE_KEY || 'hugo-pmroz/bootstrap.tfstate' }}
   TF_STATE_LOCATION: ${{ vars.TF_STATE_LOCATION || 'eastus2' }}
 
 jobs:
-  terraform:
-    name: Terraform
+  bootstrap:
+    name: Terraform Bootstrap
+    if: inputs.bootstrap_state == true
     runs-on: ubuntu-latest
     environment: terraform
-    defaults:
-      run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+    env:
+      TF_VAR_state_resource_group_name: ${{ vars.TF_STATE_RESOURCE_GROUP_NAME || 'rg-hugo-pmroz-state-shared' }}
+      TF_VAR_state_storage_account_name: ${{ vars.TF_STATE_STORAGE_ACCOUNT_NAME }}
+      TF_VAR_state_container_name: ${{ vars.TF_STATE_CONTAINER_NAME || 'tfstate' }}
+      TF_VAR_state_location: ${{ vars.TF_STATE_LOCATION || 'eastus2' }}
+      TF_VAR_assign_current_principal_blob_data_contributor: ${{ vars.TF_BOOTSTRAP_ASSIGN_CURRENT_PRINCIPAL_BLOB_DATA_CONTRIBUTOR || 'true' }}
 
     steps:
       - name: Checkout
@@ -96,118 +102,116 @@ jobs:
           : "${ARM_SUBSCRIPTION_ID:?Set AZURE_SUBSCRIPTION_ID as a GitHub variable.}"
           : "${TF_STATE_STORAGE_ACCOUNT_NAME:?Set TF_STATE_STORAGE_ACCOUNT_NAME as a GitHub variable.}"
 
-      - name: Azure login
-        if: inputs.bootstrap_state == true
-        uses: azure/login@v3
+      - name: Terraform bootstrap init
+        id: bootstrap_init
+        uses: ./.github/actions/terraform-root
         with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          working_directory: ${{ env.TF_BOOTSTRAP_WORKING_DIR }}
+          backend_mode: auto
+          backend_config: |
+            storage_account_name=${{ env.TF_STATE_STORAGE_ACCOUNT_NAME }}
+            container_name=${{ env.TF_STATE_CONTAINER_NAME }}
+            key=${{ env.TF_BOOTSTRAP_STATE_KEY }}
+            resource_group_name=${{ env.TF_STATE_RESOURCE_GROUP_NAME }}
+            use_azuread_auth=true
+          plan_mode: none
 
-      - name: Bootstrap Terraform state backend
-        if: inputs.bootstrap_state == true
+      - name: Import existing Terraform backend resources
         run: |
           set -euo pipefail
 
-          az account set --subscription "$ARM_SUBSCRIPTION_ID"
-          az account show \
-            --query "{subscriptionId:id, tenantId:tenantId, user:user.name}" \
-            --output json
+          state_resource_group_id="/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${TF_VAR_state_resource_group_name}"
+          state_storage_account_id="${state_resource_group_id}/providers/Microsoft.Storage/storageAccounts/${TF_VAR_state_storage_account_name}"
+          state_container_id="https://${TF_VAR_state_storage_account_name}.blob.core.windows.net/${TF_VAR_state_container_name}"
 
-          az provider register \
-            --namespace Microsoft.Storage \
-            --wait \
-            --subscription "$ARM_SUBSCRIPTION_ID"
+          import_if_available() {
+            address="$1"
+            resource_id="$2"
 
-          az group create \
-            --name "$TF_STATE_RESOURCE_GROUP_NAME" \
-            --location "$TF_STATE_LOCATION" \
-            --subscription "$ARM_SUBSCRIPTION_ID"
+            if terraform -chdir="$TF_BOOTSTRAP_WORKING_DIR" state show "$address" >/dev/null 2>&1; then
+              echo "$address is already in Terraform state."
+              return 0
+            fi
 
-          az storage account create \
-            --name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
-            --resource-group "$TF_STATE_RESOURCE_GROUP_NAME" \
-            --location "$TF_STATE_LOCATION" \
-            --sku Standard_LRS \
-            --kind StorageV2 \
-            --allow-blob-public-access false \
-            --min-tls-version TLS1_2 \
-            --subscription "$ARM_SUBSCRIPTION_ID"
+            if terraform -chdir="$TF_BOOTSTRAP_WORKING_DIR" import "$address" "$resource_id"; then
+              echo "Imported $address."
+            else
+              echo "No existing resource imported for $address; Terraform will create it if needed."
+            fi
+          }
 
-          account_id="$(az storage account show \
-            --name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
-            --resource-group "$TF_STATE_RESOURCE_GROUP_NAME" \
-            --subscription "$ARM_SUBSCRIPTION_ID" \
-            --query id \
-            --output tsv)"
-          principal_id="$(az ad sp show --id "$ARM_CLIENT_ID" --query id --output tsv)"
-          assignment_count="$(az role assignment list \
-            --assignee "$principal_id" \
-            --role "Storage Blob Data Contributor" \
-            --scope "$account_id" \
-            --subscription "$ARM_SUBSCRIPTION_ID" \
-            --query "length(@)" \
-            --output tsv)"
+          import_if_available azurerm_resource_group.state "$state_resource_group_id"
+          import_if_available azurerm_storage_account.state "$state_storage_account_id"
+          import_if_available azurerm_storage_container.state "$state_container_id"
 
-          if [ "$assignment_count" = "0" ]; then
-            az role assignment create \
-              --assignee "$principal_id" \
-              --role "Storage Blob Data Contributor" \
-              --scope "$account_id" \
-              --subscription "$ARM_SUBSCRIPTION_ID"
-          fi
+      - name: Terraform bootstrap apply
+        id: bootstrap
+        uses: ./.github/actions/terraform-root
+        with:
+          working_directory: ${{ env.TF_BOOTSTRAP_WORKING_DIR }}
+          backend_mode: ${{ steps.bootstrap_init.outputs.backend_mode == 'remote' && 'true' || 'false' }}
+          backend_config: |
+            storage_account_name=${{ env.TF_STATE_STORAGE_ACCOUNT_NAME }}
+            container_name=${{ env.TF_STATE_CONTAINER_NAME }}
+            key=${{ env.TF_BOOTSTRAP_STATE_KEY }}
+            resource_group_name=${{ env.TF_STATE_RESOURCE_GROUP_NAME }}
+            use_azuread_auth=true
+          plan_mode: apply
+          apply: "true"
+
+      - name: Migrate bootstrap state to remote backend
+        if: steps.bootstrap_init.outputs.backend_mode == 'local'
+        run: |
+          set -euo pipefail
+
+          backend_args=(
+            "-backend-config=storage_account_name=${TF_STATE_STORAGE_ACCOUNT_NAME}"
+            "-backend-config=container_name=${TF_STATE_CONTAINER_NAME}"
+            "-backend-config=key=${TF_BOOTSTRAP_STATE_KEY}"
+            "-backend-config=resource_group_name=${TF_STATE_RESOURCE_GROUP_NAME}"
+            "-backend-config=use_azuread_auth=true"
+          )
 
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if az storage container create \
-              --name "$TF_STATE_CONTAINER_NAME" \
-              --account-name "$TF_STATE_STORAGE_ACCOUNT_NAME" \
-              --auth-mode login; then
+            if terraform -chdir="$TF_BOOTSTRAP_WORKING_DIR" init -migrate-state -force-copy "${backend_args[@]}"; then
               exit 0
             fi
 
-            echo "Attempt $attempt of 12."
+            echo "Remote backend is not ready yet. Attempt $attempt of 12."
             sleep 10
           done
 
-          echo "Failed to create Terraform container."
+          echo "Failed to migrate bootstrap state to the remote backend."
           exit 1
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  terraform:
+    name: Terraform App
+    needs: bootstrap
+    if: always() && (needs.bootstrap.result == 'success' || needs.bootstrap.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check required GitHub variables
+        run: |
+          : "${ARM_CLIENT_ID:?Set AZURE_CLIENT_ID as a GitHub variable.}"
+          : "${ARM_TENANT_ID:?Set AZURE_TENANT_ID as a GitHub variable.}"
+          : "${ARM_SUBSCRIPTION_ID:?Set AZURE_SUBSCRIPTION_ID as a GitHub variable.}"
+          : "${TF_STATE_STORAGE_ACCOUNT_NAME:?Set TF_STATE_STORAGE_ACCOUNT_NAME as a GitHub variable.}"
+
+      - name: Terraform app
+        uses: ./.github/actions/terraform-root
         with:
-          terraform_version: 1.15.7
-
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init
-        run: |
-          terraform init \
-            -backend-config="storage_account_name=${TF_STATE_STORAGE_ACCOUNT_NAME}" \
-            -backend-config="container_name=${TF_STATE_CONTAINER_NAME}" \
-            -backend-config="key=${TF_STATE_KEY}" \
-            -backend-config="resource_group_name=${TF_STATE_RESOURCE_GROUP_NAME}"
-
-      - name: Terraform validate
-        run: terraform validate
-
-      - name: Terraform plan
-        run: |
-          if [ "${{ inputs.operation }}" = "destroy" ]; then
-            terraform plan -destroy -no-color -out=tfplan
-          else
-            terraform plan -no-color -out=tfplan
-          fi
-
-      - name: Summarize Terraform plan
-        run: |
-          {
-            echo "### Terraform plan"
-            echo '```terraform'
-            terraform show -no-color tfplan
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Terraform apply
-        if: inputs.operation == 'apply' || inputs.operation == 'destroy'
-        run: terraform apply -auto-approve tfplan
+          working_directory: ${{ env.TF_APP_WORKING_DIR }}
+          backend_mode: "true"
+          backend_config: |
+            storage_account_name=${{ env.TF_STATE_STORAGE_ACCOUNT_NAME }}
+            container_name=${{ env.TF_STATE_CONTAINER_NAME }}
+            key=${{ env.TF_STATE_KEY }}
+            resource_group_name=${{ env.TF_STATE_RESOURCE_GROUP_NAME }}
+            use_azuread_auth=true
+          plan_mode: ${{ inputs.operation }}
+          apply: ${{ (inputs.operation == 'apply' || inputs.operation == 'destroy') && 'true' || 'false' }}

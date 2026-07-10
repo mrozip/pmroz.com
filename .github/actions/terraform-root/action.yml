@@ -1,0 +1,151 @@
+name: Terraform root
+description: Run common Terraform root validation, planning, and optional apply steps.
+
+inputs:
+  working_directory:
+    description: Terraform root directory.
+    required: true
+  terraform_version:
+    description: Terraform CLI version.
+    required: false
+    default: 1.15.7
+  backend_mode:
+    description: Backend mode. Use true, false, or auto.
+    required: false
+    default: "true"
+  backend_config:
+    description: Newline-delimited backend config entries in key=value form.
+    required: false
+    default: ""
+  plan_mode:
+    description: Plan mode. Use none, plan, apply, or destroy.
+    required: false
+    default: plan
+  plan_output:
+    description: Saved plan filename.
+    required: false
+    default: tfplan
+  apply:
+    description: Apply the saved plan.
+    required: false
+    default: "false"
+
+outputs:
+  backend_mode:
+    description: Backend mode used by Terraform init.
+    value: ${{ steps.init.outputs.backend_mode }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Terraform fmt
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: terraform -chdir="$WORKING_DIRECTORY" fmt -check -recursive
+
+    - name: Terraform init
+      id: init
+      shell: bash
+      env:
+        BACKEND_CONFIG: ${{ inputs.backend_config }}
+        BACKEND_MODE: ${{ inputs.backend_mode }}
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: |
+        set -euo pipefail
+
+        backend_args=()
+        if [ -n "$BACKEND_CONFIG" ]; then
+          while IFS= read -r config; do
+            [ -z "$config" ] && continue
+            backend_args+=("-backend-config=$config")
+          done <<< "$BACKEND_CONFIG"
+        fi
+
+        case "$BACKEND_MODE" in
+          false)
+            terraform -chdir="$WORKING_DIRECTORY" init -backend=false -reconfigure
+            echo "backend_mode=disabled" >> "$GITHUB_OUTPUT"
+            ;;
+          true)
+            terraform -chdir="$WORKING_DIRECTORY" init -reconfigure "${backend_args[@]}"
+            echo "backend_mode=remote" >> "$GITHUB_OUTPUT"
+            ;;
+          auto)
+            set +e
+            terraform -chdir="$WORKING_DIRECTORY" init -reconfigure "${backend_args[@]}"
+            init_status="$?"
+            set -e
+
+            if [ "$init_status" -eq 0 ]; then
+              echo "backend_mode=remote" >> "$GITHUB_OUTPUT"
+            else
+              echo "Remote backend init failed; falling back to local bootstrap state."
+              terraform -chdir="$WORKING_DIRECTORY" init -backend=false -reconfigure
+              echo "backend_mode=local" >> "$GITHUB_OUTPUT"
+            fi
+            ;;
+          *)
+            echo "Unsupported backend_mode: $BACKEND_MODE"
+            exit 1
+            ;;
+        esac
+
+    - name: Terraform validate
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: terraform -chdir="$WORKING_DIRECTORY" validate
+
+    - name: Terraform plan
+      if: inputs.plan_mode != 'none'
+      shell: bash
+      env:
+        PLAN_MODE: ${{ inputs.plan_mode }}
+        PLAN_OUTPUT: ${{ inputs.plan_output }}
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: |
+        set -euo pipefail
+
+        case "$PLAN_MODE" in
+          plan|apply)
+            terraform -chdir="$WORKING_DIRECTORY" plan -no-color -out="$PLAN_OUTPUT"
+            ;;
+          destroy)
+            terraform -chdir="$WORKING_DIRECTORY" plan -destroy -no-color -out="$PLAN_OUTPUT"
+            ;;
+          *)
+            echo "Unsupported plan_mode: $PLAN_MODE"
+            exit 1
+            ;;
+        esac
+
+    - name: Summarize Terraform plan
+      if: inputs.plan_mode != 'none'
+      shell: bash
+      env:
+        PLAN_OUTPUT: ${{ inputs.plan_output }}
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: |
+        {
+          echo "### Terraform plan"
+          echo
+          echo "Root: \`$WORKING_DIRECTORY\`"
+          echo
+          echo '```terraform'
+          terraform -chdir="$WORKING_DIRECTORY" show -no-color "$PLAN_OUTPUT"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Terraform apply
+      if: inputs.apply == 'true'
+      shell: bash
+      env:
+        PLAN_OUTPUT: ${{ inputs.plan_output }}
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: terraform -chdir="$WORKING_DIRECTORY" apply -auto-approve "$PLAN_OUTPUT"
